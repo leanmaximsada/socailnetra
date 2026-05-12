@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["php82", "php82Extensions.pdo", "php82Extensions.pdo_pgsql", "php82Extensions.mbstring", "php82Extensions.tokenizer", "php82Extensions.xml", "php82Extensions.ctype", "php82Extensions.bcmath", "php82Extensions.fileinfo", "php82Extensions.curl", "php82Extensions.zip", "php82Extensions.pcntl"]
+nixPkgs = ["php82", "php82Extensions.pdo", "php82Extensions.pdo_pgsql", "php82Extensions.mbstring", "php82Extensions.tokenizer", "php82Extensions.xml", "php82Extensions.ctype", "php82Extensions.bcmath", "php82Extensions.fileinfo", "php82Extensions.curl", "php82Extensions.zip", "php82Extensions.pcntl", "apacheHttpd"]
 
 [phases.install]
 cmds = [
@@ -13,4 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = "php artisan config:clear && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT --tries=3"
+cmd = "php artisan config:clear && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
