@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, MessageSquare, Edit } from 'lucide-react'
+import { Loader2, MessageCircle, Edit } from 'lucide-react'
 import toast from 'react-hot-toast'
 import AppLayout from '../components/layout/AppLayout'
 import api from '../lib/axios'

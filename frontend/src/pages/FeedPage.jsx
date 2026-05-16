@@ -10,6 +10,7 @@ import InfiniteScroll from 'react-infinite-scroll-component'
 import SuggestedUsers from '../components/feed/SuggestedUsers'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { MessageCircle, Repeat2, Bookmark, MoreHorizontal, Share2 } from 'lucide-react'
+import { Loader2, MessageCircle, Edit } from 'lucide-react'
 
 export default function FeedPage() {
   const [posts, setPosts]         = useState([])
