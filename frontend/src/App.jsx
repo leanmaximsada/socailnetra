@@ -1,3 +1,4 @@
+// SocialNetra v1.0 - rebuilt
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import HashtagPage from './pages/HashtagPage'
 import SettingsPage from './pages/SettingsPage'
@@ -46,4 +47,4 @@ export default function App() {
       </Routes>
     </BrowserRouter>
   )
-} 
+}
