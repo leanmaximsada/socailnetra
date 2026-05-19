@@ -117,7 +117,7 @@ export default function FeedPage() {
   </div>
         ) : posts.length === 0 ? (
           <EmptyState
-            icon={<MessageSquare size={40} className="opacity-40" />}
+            icon={<MessageCircle size={40} className="opacity-40" />}
             title="No posts yet"
             subtitle="Follow people or create your first post!"
             actionLabel="Create Post"
