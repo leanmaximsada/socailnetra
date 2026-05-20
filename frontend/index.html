@@ -1,6 +1,28 @@
-<link rel="manifest" href="/manifest.json" />
-<link rel="apple-touch-icon" href="/logo-192.png" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black" />
-<meta name="apple-mobile-web-app-title" content="SocialNetra" />
-<meta name="theme-color" content="#000000" />
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SocialNetra</title>
+
+    <!-- Theme flash prevention -->
+    <script>
+      const theme = JSON.parse(localStorage.getItem('theme-storage') || '{}')?.state?.theme || 'dark'
+      if (theme === 'light') document.documentElement.classList.add('light')
+      else document.documentElement.classList.add('dark')
+    </script>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/logo-192.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="SocialNetra" />
+    <meta name="theme-color" content="#000000" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
