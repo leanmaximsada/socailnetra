@@ -30,19 +30,19 @@ export default function ProfilePage() {
         if (profile) setFollowing(profile.is_following ?? false);
     }, [profile]);
 
-    const toggleFollow = async () => {
-        setFollowLoading(true);
-        try {
-            await api.post(`/users/${profile.id}/follow`); // 👈 use id not username
-            setFollowing((f) => !f);
-            refetch();
-        } catch (err) {
-            const msg = err.response?.data?.message || "Failed to follow";
-            toast.error(msg);
-        } finally {
-            setFollowLoading(false);
-        }
-    };
+const toggleFollow = async () => {
+    setFollowLoading(true);
+    try {
+        await api.post(`/users/${profile.id}/follow`);
+        setFollowing((f) => !f);
+        await refetch(); // await the refetch so it completes before state updates
+    } catch (err) {
+        const msg = err.response?.data?.message || "Failed to follow";
+        toast.error(msg);
+    } finally {
+        setFollowLoading(false);
+    }
+};
 
     const initials = profile?.name?.slice(0, 2).toUpperCase() ?? "??";
     const colors = [
