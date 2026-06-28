@@ -1,15 +1,11 @@
-import axios from 'axios'
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api/v1',
-})
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+export const storageUrl = (path) => {
+  if (!path) return null
+  if (path.startsWith('http')) {
+    // Replace local URL with production URL in production
+    return path.replace(
+      'http://127.0.0.1:8000',
+      import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://127.0.0.1:8000'
+    )
   }
-  return config
-})
-
-export default api
+  return `${import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://127.0.0.1:8000'}/storage/${path}`
+}

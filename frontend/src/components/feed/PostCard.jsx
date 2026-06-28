@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import api from '../../lib/axios'
 import LikeButton from './LikeButton'
 import LikesModal from './LikesModal'
+import api, { storageUrl } from '../../lib/axios'
 
 function timeAgo(dateStr) {
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000)
@@ -117,9 +118,7 @@ const toggleRepost = async () => {
                 post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
               }`}>
                 {post.media.map((m) => {
-                  const url = m.url?.startsWith('http')
-                    ? m.url
-                    : `http://127.0.0.1:8000/storage/${m.url}`
+const url = storageUrl(m.url)
                   return m.type === 'video' ? (
                     <video key={m.id} src={url} controls className="w-full object-cover max-h-80" />
                   ) : (
