@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Heart } from 'lucide-react'
 
-export default function LikeButton({ liked, count, onToggle, size = 'md' }) {
+export default function LikeButton({ liked, count, onToggle, size = 'md', showCount = true }) {
   const [animate, setAnimate] = useState(false)
 
   const handleClick = () => {
@@ -43,7 +43,7 @@ export default function LikeButton({ liked, count, onToggle, size = 'md' }) {
           </div>
         )}
       </div>
-      <span className="text-xs tabular-nums">{count}</span>
+      {showCount && <span className="text-xs tabular-nums">{count}</span>}
     </button>
   )
 }

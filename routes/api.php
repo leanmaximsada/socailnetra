@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\SocialAuthController;
 use App\Http\Controllers\Api\StoryController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\RepostController;
 
 Route::prefix('v1')->group(function () {
 
@@ -36,6 +37,8 @@ Route::prefix('v1')->group(function () {
         // Auth
         Route::post('/auth/logout',        [AuthController::class, 'logout']);
         Route::get('/auth/me',             [AuthController::class, 'me']);
+        Route::post('/posts/{post}/repost', [RepostController::class, 'toggle']);
+Route::get('/users/{username}/reposts', [RepostController::class, 'userReposts']);
 
         // Feed
         Route::get('/feed',                [FeedController::class, 'index']);

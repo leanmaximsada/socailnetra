@@ -67,4 +67,14 @@ class Post extends Model
     {
         return $this->bookmarkedBy()->where('users.id', $user->id)->exists();
     }
+
+    public function reposts()
+{
+    return $this->hasMany(Repost::class);
+}
+
+public function repostedBy()
+{
+    return $this->belongsToMany(User::class, 'reposts');
+}
 }

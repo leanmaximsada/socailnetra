@@ -135,4 +135,9 @@ class User extends Authenticatable
 
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&background=random&color=fff';
     }
+
+    public function reposts()
+{
+    return $this->hasMany(Repost::class);
+}
 }

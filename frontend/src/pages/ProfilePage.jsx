@@ -165,7 +165,7 @@ if (loading) {
             </div>
 
             {/* Posts */}
-            <PostsGrid posts={posts} />
+            <PostsGrid posts={posts} username={targetUsername} />
 
             {/* Edit Modal */}
             {showEdit && (

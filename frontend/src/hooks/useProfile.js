@@ -16,7 +16,16 @@ export function useProfile(username) {
         api.get(`/users/${username}`),
         api.get(`/users/${username}/posts?page=1`),
       ])
-      setProfile(profileRes.data.user)
+
+      // Merge user data with is_following, is_blocked, follow_status
+      const userData = profileRes.data.user
+      const mergedProfile = {
+        ...userData,
+        is_following: profileRes.data.is_following ?? false,
+        is_blocked: profileRes.data.is_blocked ?? false,
+        follow_status: profileRes.data.follow_status ?? null,
+      }
+      setProfile(mergedProfile)
       setPosts(postsRes.data.data ?? postsRes.data)
       setHasMore((postsRes.data.current_page ?? 1) < (postsRes.data.last_page ?? 1))
       setPage(1)

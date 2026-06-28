@@ -76,11 +76,15 @@ export default function ConversationsPage() {
     }
   }
 
-  const getOtherUser = (convo) => {
-    if (convo.other_user) return convo.other_user
-    const participants = convo.participants ?? []
-    return participants.find(p => p.id !== me?.id) ?? participants[0]
+const getOtherUser = (convo) => {
+  if (convo.other_user) return convo.other_user
+  // Handle user_one / user_two format
+  if (convo.user_one && convo.user_two) {
+    return convo.user_one_id === me?.id ? convo.user_two : convo.user_one
   }
+  const participants = convo.participants ?? []
+  return participants.find(p => p.id !== me?.id) ?? participants[0]
+}
 
   return (
     <AppLayout>

@@ -40,9 +40,10 @@ export default function ChatPage() {
   const [body, setBody]         = useState('')
   const [sending, setSending]   = useState(false)
 
-  const otherUser = convo?.other_user
-    ?? convo?.participants?.find(p => p.id !== me?.id)
-    ?? convo?.participants?.[0]
+const otherUser = convo?.other_user
+  ?? (convo?.user_one_id === me?.id ? convo?.user_two : convo?.user_one)
+  ?? convo?.participants?.find(p => p.id !== me?.id)
+  ?? convo?.participants?.[0]
 
   // Initial load
   useEffect(() => {
@@ -70,73 +71,85 @@ export default function ChatPage() {
     fetchData()
   }, [id])
 
-  // WebSocket + polling fallback
-  useEffect(() => {
-    if (!id) return
+useEffect(() => {
+  if (!id) return
 
-    // Poll every 3 seconds for new messages
-    const poll = setInterval(async () => {
-      try {
-        const res = await api.get(`/conversations/${id}/messages`)
-        const msgs = res.data.data ?? res.data
-        const reversed = Array.isArray(msgs) ? msgs.reverse() : []
-        setMessages(prev => {
-          // Only update if there are new messages
-          if (reversed.length > prev.filter(m => !m.temp).length) {
-            return reversed
-          }
-          return prev
-        })
-      } catch {}
-    }, 3000)
+  // Reduce polling to 1 second for near-instant fallback
+  const poll = setInterval(async () => {
+    try {
+      const res = await api.get(`/conversations/${id}/messages`)
+      const msgs = res.data.data ?? res.data
+      const reversed = Array.isArray(msgs) ? msgs.reverse() : []
 
-    // WebSocket listener
-    if (echo) {
-      const channel = echo.private(`conversation.${id}`)
-      channel.listen('.new.message', (data) => {
-        setMessages(prev => {
-          if (prev.find(m => m.id === data.id)) return prev
-          return [...prev, data]
-        })
+      setMessages(prev => {
+        const existingIds = new Set(prev.filter(m => !m.temp).map(m => m.id))
+        const newMsgs = reversed.filter(m => !existingIds.has(m.id))
+        if (newMsgs.length === 0) return prev
+        const withoutOldTemps = prev.filter(m => m.temp ?
+          !reversed.find(r => r.body === m.body && r.sender_id === me?.id)
+          : true
+        )
+        return [...withoutOldTemps, ...newMsgs]
       })
-    }
+    } catch {}
+  }, 1000)
 
-    return () => {
-      clearInterval(poll)
-      if (echo) echo.leave(`conversation.${id}`)
-    }
-  }, [id])
+  // WebSocket listener
+  if (echo) {
+    const channel = echo.private(`conversation.${id}`)
+    channel.listen('.new.message', (data) => {
+      setMessages(prev => {
+        // Skip if already exists
+        if (prev.find(m => m.id === data.id)) return prev
+        // Replace matching temp message if exists
+        const tempIndex = prev.findIndex(m => m.temp && m.body === data.body && m.sender_id === data.sender_id)
+        if (tempIndex !== -1) {
+          const updated = [...prev]
+          updated[tempIndex] = { ...data, temp: false }
+          return updated
+        }
+        return [...prev, data]
+      })
+    })
+  }
+
+  return () => {
+    clearInterval(poll)
+    if (echo) echo.leave(`conversation.${id}`)
+  }
+}, [id])
 
   // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const sendMessage = async () => {
-    if (!body.trim()) return
-    setSending(true)
-    const tempId  = `temp-${Date.now()}`
-    const tempMsg = {
-      id: tempId,
-      body,
-      sender_id: me?.id,
-      sender: me,
-      created_at: new Date().toISOString(),
-      temp: true,
-    }
-    setMessages(prev => [...prev, tempMsg])
-    setBody('')
-    try {
-      const res = await api.post(`/conversations/${id}/messages`, { body: tempMsg.body })
-      const saved = res.data.data ?? res.data
-      setMessages(prev => prev.map(m => m.id === tempId ? saved : m))
-    } catch {
-      setMessages(prev => prev.filter(m => m.id !== tempId))
-      toast.error('Failed to send message')
-    } finally {
-      setSending(false)
-    }
+const sendMessage = async () => {
+  if (!body.trim()) return
+  setSending(true)
+  const tempId = `temp-${Date.now()}`
+  const tempMsg = {
+    id: tempId,
+    body,
+    sender_id: me?.id,
+    sender: me,
+    created_at: new Date().toISOString(),
+    temp: true,
   }
+  setMessages(prev => [...prev, tempMsg])
+  setBody('')
+  try {
+    const res = await api.post(`/conversations/${id}/messages`, { body: tempMsg.body })
+    const saved = res.data.data ?? res.data
+    // Replace temp with real message
+    setMessages(prev => prev.map(m => m.id === tempId ? { ...saved, temp: false } : m))
+  } catch {
+    setMessages(prev => prev.filter(m => m.id !== tempId))
+    toast.error('Failed to send message')
+  } finally {
+    setSending(false)
+  }
+}
 
   const deleteMessage = async (msgId) => {
     try {
