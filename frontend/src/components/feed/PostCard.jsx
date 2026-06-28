@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { MessageCircle, Repeat2, Bookmark, MoreHorizontal, Share2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import api from '../../lib/axios'
+import api, { storageUrl } from '../../lib/axios'
 import LikeButton from './LikeButton'
 import LikesModal from './LikesModal'
-import api, { storageUrl } from '../../lib/axios'
+
 
 function timeAgo(dateStr) {
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000)
