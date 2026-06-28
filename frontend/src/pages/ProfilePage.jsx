@@ -81,10 +81,7 @@ if (loading) {
                 <div className="flex items-start justify-between mb-4">
                     {/* Avatar */}
                     {profile.avatar ? (
-                        <img
-                            src={profile.avatar}
-                            alt={profile.name}
-                            className="w-20 h-20 rounded-full object-cover border-2 border-zinc-800"
+                        <img src={storageUrl(profile.avatar)} alt={profile.name}className="w-20 h-20 rounded-full object-cover border-2 border-zinc-800"
                         />
                     ) : (
                         <div

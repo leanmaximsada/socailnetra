@@ -18,7 +18,7 @@ function timeAgo(dateStr) {
 function Avatar({ name, username, avatar }) {
   const colors = ['bg-violet-600','bg-blue-600','bg-pink-600','bg-orange-500','bg-green-600']
   const color  = colors[(username?.charCodeAt(0) ?? 0) % colors.length]
-  if (avatar) return <img src={avatar} alt={name} className="w-10 h-10 rounded-full object-cover shrink-0 border border-zinc-800" />
+  if (avatar) return <img src={storageUrl(avatar)} alt={name} className="w-10 h-10 rounded-full object-cover shrink-0 border border-zinc-800" />
   return (
     <div className={`w-10 h-10 rounded-full ${color} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
       {name?.slice(0, 2).toUpperCase() ?? '??'}
