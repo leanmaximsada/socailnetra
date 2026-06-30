@@ -10,7 +10,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class PostController extends Controller
 {
@@ -33,7 +32,7 @@ class PostController extends Controller
             'location'         => ['nullable', 'string', 'max:100'],
             'disable_comments' => ['boolean'],
             'media'            => ['nullable', 'array', 'max:10'],
-            'media.*'          => ['file', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov', 'max:51200'],
+            'media.*'          => ['file', 'mimes:jpg,jpeg,png,gif,webp,mp4,mov,mp3,wav,ogg', 'max:102400'],
         ]);
 
         $post = DB::transaction(function () use ($request) {
@@ -47,13 +46,33 @@ class PostController extends Controller
 
             if ($request->hasFile('media')) {
                 foreach ($request->file('media') as $index => $file) {
-                    $path = $file->store('posts/' . $post->id, 'public');
+                    $mimeType    = $file->getMimeType();
+                    $isVideo     = str_starts_with($mimeType, 'video');
+                    $isAudio     = str_starts_with($mimeType, 'audio');
+                    $resourceType = $isVideo ? 'video' : ($isAudio ? 'video' : 'image');
+
+                    // Upload to Cloudinary
+                    $uploaded = cloudinary()->upload($file->getRealPath(), [
+                        'folder'        => 'socialnetra/posts/' . $post->id,
+                        'resource_type' => $resourceType,
+                    ]);
+
+                    $url          = $uploaded->getSecurePath();
+                    $thumbnailUrl = null;
+
+                    // Generate thumbnail for videos
+                    if ($isVideo) {
+                        $thumbnailUrl = $uploaded->getSecurePath();
+                        $thumbnailUrl = str_replace('/upload/', '/upload/w_400,h_400,c_fill,so_0/', $thumbnailUrl);
+                        $thumbnailUrl = preg_replace('/\.[^.]+$/', '.jpg', $thumbnailUrl);
+                    }
 
                     PostMedia::create([
-                        'post_id' => $post->id,
-                        'url'     => $path,
-                        'type'    => str_starts_with($file->getMimeType(), 'video') ? 'video' : 'image',
-                        'order'   => $index,
+                        'post_id'       => $post->id,
+                        'url'           => $url,
+                        'thumbnail_url' => $thumbnailUrl,
+                        'type'          => $isVideo ? 'video' : ($isAudio ? 'audio' : 'image'),
+                        'order'         => $index,
                     ]);
                 }
             }
@@ -70,7 +89,7 @@ class PostController extends Controller
         $post->load(['user', 'media', 'hashtags']);
 
         return response()->json($post, 201);
-    } 
+    }
 
     public function show(Post $post): JsonResponse
     {
@@ -110,8 +129,16 @@ class PostController extends Controller
         }
 
         DB::transaction(function () use ($post, $request) {
+            // Delete from Cloudinary
             foreach ($post->media as $media) {
-                Storage::disk('public')->delete($media->getRawOriginal('url'));
+                try {
+                    $url       = $media->url;
+                    $publicId  = $this->extractCloudinaryPublicId($url);
+                    $isVideo   = $media->type === 'video';
+                    cloudinary()->destroy($publicId, ['resource_type' => $isVideo ? 'video' : 'image']);
+                } catch (\Exception $e) {
+                    // Continue even if Cloudinary delete fails
+                }
             }
             $post->delete();
             $request->user()->decrement('posts_count');
@@ -143,5 +170,15 @@ class PostController extends Controller
         }
 
         $post->hashtags()->sync($ids);
+    }
+
+    private function extractCloudinaryPublicId(string $url): string
+    {
+        // Extract public_id from Cloudinary URL
+        // e.g. https://res.cloudinary.com/dxacip8n6/image/upload/v123/socialnetra/posts/1/abc.jpg
+        // returns socialnetra/posts/1/abc
+        $pattern = '/\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/';
+        preg_match($pattern, $url, $matches);
+        return $matches[1] ?? '';
     }
 }

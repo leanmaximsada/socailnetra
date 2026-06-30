@@ -8,6 +8,7 @@ use App\Models\Message;
 use App\Events\NewMessageEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class MessageController extends Controller
 {
@@ -36,14 +37,36 @@ class MessageController extends Controller
         }
 
         $request->validate([
-            'body' => ['required', 'string', 'max:1000'],
+            'body'  => ['nullable', 'string', 'max:1000'],
+            'media' => ['nullable', 'file', 'max:51200'], // 50MB max
+            'type'  => ['nullable', 'string', 'in:text,image,voice,video'],
         ]);
+
+        if (!$request->body && !$request->hasFile('media')) {
+            return response()->json(['message' => 'Message body or media is required'], 422);
+        }
+
+        $mediaUrl = null;
+        $messageType = $request->type ?? 'text';
+
+        if ($request->hasFile('media')) {
+            $file = $request->file('media');
+            $resourceType = $messageType === 'voice' ? 'video' : 'auto'; // Cloudinary treats audio as 'video' resource type
+
+            $uploadedFile = Cloudinary::upload($file->getRealPath(), [
+                'folder' => 'socialnetra/messages/' . $conversation->id,
+                'resource_type' => $resourceType,
+            ]);
+
+            $mediaUrl = $uploadedFile->getSecurePath();
+        }
 
         $message = Message::create([
             'conversation_id' => $conversation->id,
             'sender_id'       => $userId,
             'body'            => $request->body,
-            'type'            => 'text',
+            'media_url'       => $mediaUrl,
+            'type'            => $messageType,
         ]);
 
         $conversation->update([

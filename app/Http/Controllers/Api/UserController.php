@@ -66,14 +66,29 @@ class UserController extends Controller
 
         $user = $request->user();
 
-        if ($user->avatar && !str_starts_with($user->avatar, 'http')) {
-            \Storage::disk('public')->delete($user->avatar);
+        // Delete old avatar from Cloudinary
+        if ($user->avatar && str_starts_with($user->avatar, 'https://res.cloudinary.com')) {
+            try {
+                $publicId = $this->extractCloudinaryPublicId($user->avatar);
+                cloudinary()->destroy($publicId);
+            } catch (\Exception $e) {}
         }
 
-        $path = $request->file('avatar')->store('avatars', 'public');
-        $user->update(['avatar' => $path]);
+        // Upload new avatar to Cloudinary
+        $uploaded = cloudinary()->upload($request->file('avatar')->getRealPath(), [
+            'folder'         => 'socialnetra/avatars',
+            'transformation' => [
+                'width'   => 400,
+                'height'  => 400,
+                'crop'    => 'fill',
+                'gravity' => 'face',
+            ],
+        ]);
 
-        return response()->json(['avatar_url' => $user->avatar_url]);
+        $url = $uploaded->getSecurePath();
+        $user->update(['avatar' => $url]);
+
+        return response()->json(['avatar_url' => $url]);
     }
 
     public function updateCover(Request $request): JsonResponse
@@ -82,14 +97,28 @@ class UserController extends Controller
 
         $user = $request->user();
 
-        if ($user->cover_photo) {
-            \Storage::disk('public')->delete($user->cover_photo);
+        // Delete old cover from Cloudinary
+        if ($user->cover_photo && str_starts_with($user->cover_photo, 'https://res.cloudinary.com')) {
+            try {
+                $publicId = $this->extractCloudinaryPublicId($user->cover_photo);
+                cloudinary()->destroy($publicId);
+            } catch (\Exception $e) {}
         }
 
-        $path = $request->file('cover')->store('covers', 'public');
-        $user->update(['cover_photo' => $path]);
+        // Upload new cover to Cloudinary
+        $uploaded = cloudinary()->upload($request->file('cover')->getRealPath(), [
+            'folder'         => 'socialnetra/covers',
+            'transformation' => [
+                'width'  => 1200,
+                'height' => 400,
+                'crop'   => 'fill',
+            ],
+        ]);
 
-        return response()->json(['cover_url' => asset('storage/' . $path)]);
+        $url = $uploaded->getSecurePath();
+        $user->update(['cover_photo' => $url]);
+
+        return response()->json(['cover_url' => $url]);
     }
 
     public function posts(string $username): JsonResponse
@@ -144,5 +173,12 @@ class UserController extends Controller
     {
         $request->user()->blocks()->detach($user->id);
         return response()->json(['message' => 'User unblocked']);
+    }
+
+    private function extractCloudinaryPublicId(string $url): string
+    {
+        $pattern = '/\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/';
+        preg_match($pattern, $url, $matches);
+        return $matches[1] ?? '';
     }
 }

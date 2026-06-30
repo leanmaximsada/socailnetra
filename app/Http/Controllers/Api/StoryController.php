@@ -42,13 +42,22 @@ class StoryController extends Controller
             'text_overlay' => ['nullable', 'string', 'max:200'],
         ]);
 
-        $file = $request->file('media');
-        $path = $file->store('stories', 'public');
-        $type = str_starts_with($file->getMimeType(), 'video') ? 'video' : 'image';
+        $file         = $request->file('media');
+        $isVideo      = str_starts_with($file->getMimeType(), 'video');
+        $resourceType = $isVideo ? 'video' : 'image';
+
+        // Upload to Cloudinary
+        $uploaded = cloudinary()->upload($file->getRealPath(), [
+            'folder'        => 'socialnetra/stories',
+            'resource_type' => $resourceType,
+        ]);
+
+        $url  = $uploaded->getSecurePath();
+        $type = $isVideo ? 'video' : 'image';
 
         $story = Story::create([
             'user_id'      => $request->user()->id,
-            'media_url'    => $path,
+            'media_url'    => $url,
             'type'         => $type,
             'text_overlay' => $request->text_overlay,
             'expires_at'   => now()->addHours(24),
@@ -65,7 +74,14 @@ class StoryController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        \Storage::disk('public')->delete($story->getRawOriginal('media_url'));
+        // Delete from Cloudinary
+        try {
+            $url      = $story->getRawOriginal('media_url');
+            $isVideo  = $story->type === 'video';
+            $publicId = $this->extractCloudinaryPublicId($url);
+            cloudinary()->destroy($publicId, ['resource_type' => $isVideo ? 'video' : 'image']);
+        } catch (\Exception $e) {}
+
         $story->delete();
 
         return response()->json(['message' => 'Story deleted']);
@@ -91,5 +107,12 @@ class StoryController extends Controller
             ->get(['users.id', 'name', 'username', 'avatar']);
 
         return response()->json($viewers);
+    }
+
+    private function extractCloudinaryPublicId(string $url): string
+    {
+        $pattern = '/\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/';
+        preg_match($pattern, $url, $matches);
+        return $matches[1] ?? '';
     }
 }
