@@ -6,13 +6,28 @@ use App\Http\Controllers\Controller;
 use App\Models\Hashtag;
 use App\Models\Post;
 use App\Models\PostMedia;
+use Cloudinary\Cloudinary;
+use Cloudinary\Configuration\Configuration;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
+    private function getCloudinary(): Cloudinary
+    {
+        return new Cloudinary(
+            Configuration::instance([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                    'api_key'    => env('CLOUDINARY_API_KEY'),
+                    'api_secret' => env('CLOUDINARY_API_SECRET'),
+                ],
+                'url' => ['secure' => true],
+            ])
+        );
+    }
+
     public function index(Request $request): JsonResponse
     {
         $posts = Post::where('user_id', $request->user()->id)
@@ -45,25 +60,27 @@ class PostController extends Controller
             ]);
 
             if ($request->hasFile('media')) {
+                $cloudinary = $this->getCloudinary();
+
                 foreach ($request->file('media') as $index => $file) {
-                    $mimeType    = $file->getMimeType();
-                    $isVideo     = str_starts_with($mimeType, 'video');
-                    $isAudio     = str_starts_with($mimeType, 'audio');
-                    $resourceType = $isVideo ? 'video' : ($isAudio ? 'video' : 'image');
+                    $mimeType     = $file->getMimeType();
+                    $isVideo      = str_starts_with($mimeType, 'video');
+                    $isAudio      = str_starts_with($mimeType, 'audio');
+                    $resourceType = ($isVideo || $isAudio) ? 'video' : 'image';
 
-                    // Upload to Cloudinary
-                    $uploaded = cloudinary()->upload($file->getRealPath(), [
-                        'folder'        => 'socialnetra/posts/' . $post->id,
-                        'resource_type' => $resourceType,
-                    ]);
+                    $result = $cloudinary->uploadApi()->upload(
+                        $file->getRealPath(),
+                        [
+                            'folder'        => 'socialnetra/posts/' . $post->id,
+                            'resource_type' => $resourceType,
+                        ]
+                    );
 
-                    $url          = $uploaded->getSecurePath();
+                    $url          = $result['secure_url'];
                     $thumbnailUrl = null;
 
-                    // Generate thumbnail for videos
                     if ($isVideo) {
-                        $thumbnailUrl = $uploaded->getSecurePath();
-                        $thumbnailUrl = str_replace('/upload/', '/upload/w_400,h_400,c_fill,so_0/', $thumbnailUrl);
+                        $thumbnailUrl = str_replace('/upload/', '/upload/w_400,h_400,c_fill,so_0/', $url);
                         $thumbnailUrl = preg_replace('/\.[^.]+$/', '.jpg', $thumbnailUrl);
                     }
 
@@ -129,16 +146,15 @@ class PostController extends Controller
         }
 
         DB::transaction(function () use ($post, $request) {
-            // Delete from Cloudinary
             foreach ($post->media as $media) {
                 try {
-                    $url       = $media->url;
-                    $publicId  = $this->extractCloudinaryPublicId($url);
-                    $isVideo   = $media->type === 'video';
-                    cloudinary()->destroy($publicId, ['resource_type' => $isVideo ? 'video' : 'image']);
-                } catch (\Exception $e) {
-                    // Continue even if Cloudinary delete fails
-                }
+                    $cloudinary = $this->getCloudinary();
+                    $publicId   = $this->extractCloudinaryPublicId($media->url);
+                    $isVideo    = $media->type === 'video';
+                    $cloudinary->uploadApi()->destroy($publicId, [
+                        'resource_type' => $isVideo ? 'video' : 'image',
+                    ]);
+                } catch (\Exception $e) {}
             }
             $post->delete();
             $request->user()->decrement('posts_count');
@@ -174,9 +190,6 @@ class PostController extends Controller
 
     private function extractCloudinaryPublicId(string $url): string
     {
-        // Extract public_id from Cloudinary URL
-        // e.g. https://res.cloudinary.com/dxacip8n6/image/upload/v123/socialnetra/posts/1/abc.jpg
-        // returns socialnetra/posts/1/abc
         $pattern = '/\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/';
         preg_match($pattern, $url, $matches);
         return $matches[1] ?? '';
